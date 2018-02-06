@@ -2,6 +2,8 @@
 # Bittrex CLI Tool
 # Anon 2018
 
+
+""" Imports """ 
 import bittrex
 import sys
 import json
@@ -10,6 +12,7 @@ import logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG, filename='bittrextool.log')
 
 """
+    Bittrex API Lib Functions
  |  
  |  buylimit(self, market, quantity, rate)
  |  
@@ -56,19 +59,23 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG, fil
 
 
 """
+
+# some globals
 key = ''
 secret = ''
 withdrawal_enabled=True
 
+# return time
 def timeStamp():
      return time.time()
 
+ # print to stderr
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
 
-
+# legacy config file stuff
 try:
     # For Python 3+
     from configparser import ConfigParser, NoSectionError
@@ -104,8 +111,8 @@ def main(argv):
     #float
     parser.add_argument('-a', '--amount', default='0.0', type=float, required=False, help='Specify an amount to buy, sell, withdraw, etc')
     parser.add_argument('-P', '--price', default='0.0', type=float , required=False, help="Price to buy or sell at")
-    
-
+     
+    # parse args
     args = parser.parse_args()
     config = ConfigParser()
     debug = args.debug
@@ -128,7 +135,7 @@ def main(argv):
     amount = args.amount
     price = args.price
 
-
+    # read config
     try:
         config.read(args.config)
         bittrexKey = config.get('keys', 'bittrexKey')
@@ -151,10 +158,10 @@ def main(argv):
             eprint('Failed to create and/or write to {}'.format(args.config))
         # do stuff here
         api = bittrex.bittrex(key, secret)
-        
+        # Start Program
         tS = timeStamp()
         logging.debug("Program started at %s" % tS)
-        
+        # API functions
     def get_ticker(pair):
         api = bittrex.bittrex(key, secret)
         if pair == 'null':
@@ -306,7 +313,7 @@ def main(argv):
             return(ret)
         
     
-
+    # program execution logic
         
     if ticker:
             if debug:
@@ -362,6 +369,6 @@ def main(argv):
             print(ret)
             
             
-            
+# start up            
 if __name__ == "__main__":
     main(sys.argv[1:])
