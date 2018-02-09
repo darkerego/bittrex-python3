@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Bittrex CLI Tool
-# Anon 2018
+# Darkerego 2018
 
 
 """ Imports """ 
@@ -10,6 +10,8 @@ import json
 import argparse
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG, filename='bittrextool.log')
+
+#TODO: map out the ret of these funtions
 
 """
     Bittrex API Lib Functions
