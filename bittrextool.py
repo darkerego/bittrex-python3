@@ -88,7 +88,7 @@ def main(argv):
     # Setup Argument Parser
     parser = argparse.ArgumentParser(description='Python3 Bittrex API Tool')
     # functions
-    parser.add_argument('-f', '--config', default='./bittrex.cfg', type=str, required=False, help='config .cfg file')
+    parser.add_argument('-f', '--config', default='./bittrex.cfg', type=str, required=True, help='config .cfg file')
     parser.add_argument('-t', '--ticker', default=False, action='store_true', required=False, help='Get ticker information for pai , specify with -p (example: BTC-ETH)')
     parser.add_argument('-d', '--deposit_address', action='store_true', default=False, required=False, help='Get deposit addresses for currency (specify with -c)')
     parser.add_argument('-D', '--debug', action='store_true', default=False, required=False, help='Enable extra verbose messages for debugging')
