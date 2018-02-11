@@ -1,97 +1,72 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 # Bittrex CLI Tool
-# Darkerego 2018
+# DarkerEgo 2018
 
-
-""" Imports """ 
 import bittrex
 import sys
 import json
 import argparse
 import logging
+from sys import exit
+# Log Formatter
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG, filename='bittrextool.log')
 
-#TODO: map out the ret of these funtions
 
-"""
-    Bittrex API Lib Functions
- |  
- |  buylimit(self, market, quantity, rate)
- |  
- |  buymarket(self, market, quantity)
- |  
- |  cancel(self, uuid)
- |  
- |  getbalance(self, currency)
- |  
- |  getbalances(self)
- |  
- |  getcurrencies(self)
- |  
- |  getdepositaddress(self, currency)
- |  
- |  getdeposithistory(self, currency, count)
- |  
- |  getmarkethistory(self, market, count=20)
- |  
- |  getmarkets(self)
- |  
- |  getmarketsummaries(self)
- |  
- |  getmarketsummary(self, market)
- |  
- |  getopenorders(self, market)
- |  
- |  getorder(self, uuid)
- |  
- |  getorderbook(self, market, type, depth=20)
- |  
- |  getorderhistory(self, market, count)
- |  
- |  getticker(self, market)
- |  
- |  getwithdrawalhistory(self, currency, count)
- |  query(self, method, values={})
- |  
- |  selllimit(self, market, quantity, rate)
- |  
- |  sellmarket(self, market, quantity)
- |  
- |  withdraw(self, currency, quantity, address)
-
-
-"""
-
-# some globals
 key = ''
 secret = ''
-withdrawal_enabled=True
+withdrawal_enabled=False
 
-# return time
 def timeStamp():
      return time.time()
 
- # print to stderr
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+"""
+API Funx
+
+buylimit(self, market, quantity, rate)
+buymarket(self, market, quantity)
+cancel(self, uuid)
+getbalance(self, currency)
+getbalances(self)
+getcurrencies(self)
+getdepositaddress(self, currency)
+getdeposithistory(self, currency, count)
+getmarkethistory(self, market, count=20)
+getmarkets(self)
+getmarketsummaries(self)
+getmarketsummary(self, market)
+getopenorders(self, market)
+getorder(self, uuid)
+getorderbook(self, market, type, depth=20)
+getorderhistory(self, market, count)
+getticker(self, market)
+getwithdrawalhistory(self, currency, count)
+query(self, method, values={})
+selllimit(self, market, quantity, rate)
+sellmarket(self, market, quantity)
+withdraw(self, currency, quantity, address)
+"""
 
 
-# legacy config file stuff
+
 try:
     # For Python 3+
     from configparser import ConfigParser, NoSectionError
 except ImportError:
-    # Fallback to Python 2.7
-    from ConfigParser import ConfigParser, NoSectionError
+    eprint('This program was written for python3.6')
+    sys.exit(1)
+    
 def main(argv):
     # Setup Argument Parser
-    parser = argparse.ArgumentParser(description='Python3 Bittrex API Tool')
+    parser = argparse.ArgumentParser(description='Bittrex API Tool')
     # functions
     parser.add_argument('-f', '--config', default='./bittrex.cfg', type=str, required=True, help='config .cfg file')
     parser.add_argument('-t', '--ticker', default=False, action='store_true', required=False, help='Get ticker information for pai , specify with -p (example: BTC-ETH)')
     parser.add_argument('-d', '--deposit_address', action='store_true', default=False, required=False, help='Get deposit addresses for currency (specify with -c)')
-    parser.add_argument('-D', '--debug', action='store_true', default=False, required=False, help='Enable extra verbose messages for debugging')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False, required=False, help='Enable extra verbose messages for debugging')
+    parser.add_argument('-D', '--deposit_history', action='store_true', default=False, required=False, help='Return acct deposit history')
     parser.add_argument('-B', '--balances', default=False, action='store_true', required=False, help='Get all available balances')
     parser.add_argument('-k', '--balance', default=False, action='store_true', required=False, help='Get a particular account balance (specifiy with -c)')
     parser.add_argument('-b', '--buy_limit', default=False, action='store_true', required=False, help='Buy Limit Order ')
@@ -99,7 +74,12 @@ def main(argv):
     parser.add_argument('-C', '--cancel_order', default=False, action='store_true' ,required=False, help="Cancel an order")
     parser.add_argument('-W', '--withdraw', default=False, action='store_true', required=False, help="DANGEROUS: Withdraw (specify currency <-c>, amount <-a>, and address <-A>)")
     parser.add_argument('-w', '--withdrawal_history', default=False, action='store_true', required=False, help='Get withdrawl history (specify currency <-c> , and optionally count <-x>) ')
-    
+    parser.add_argument('-O', '--open_orders', default=False, action='store_true', required=False, help='Get open orders for pair (specify with -p)')
+    parser.add_argument('-I', '--currencies',  default=False, action='store_true', required=False, help='Return a list of supported currency information')
+    parser.add_argument('-H', '--order_history', default=False, action='store_true', required=False, help='Return your order history')
+    parser.add_argument('-q', '--order_status_query', default=False, action='store_true', required=False, help='Query an order by uuid for status')
+
+
     # arguments to functions
     #str
     
@@ -113,11 +93,11 @@ def main(argv):
     #float
     parser.add_argument('-a', '--amount', default='0.0', type=float, required=False, help='Specify an amount to buy, sell, withdraw, etc')
     parser.add_argument('-P', '--price', default='0.0', type=float , required=False, help="Price to buy or sell at")
-     
-    # parse args
+    
+
     args = parser.parse_args()
     config = ConfigParser()
-    debug = args.debug
+    
     ticker = args.ticker
     deposit_address = args.deposit_address
     balances = args.balances
@@ -128,16 +108,19 @@ def main(argv):
     withdraw = args.withdraw
     withdrawal_history = args.withdrawal_history
     address = args.address
-    
-    
+    orders = args.open_orders
+    currencies = args.currencies
+    deposit_history = args.deposit_history
+    order_status_query = args.order_status_query
+    order_history = args.order_history
     currency = args.currency
     pair = args.pair
     order_id = args.order_id
     count = args.count
     amount = args.amount
     price = args.price
+    debug = args.verbose
 
-    # read config
     try:
         config.read(args.config)
         bittrexKey = config.get('keys', 'bittrexKey')
@@ -160,12 +143,13 @@ def main(argv):
             eprint('Failed to create and/or write to {}'.format(args.config))
         # do stuff here
         api = bittrex.bittrex(key, secret)
-        # Start Program
+        
         tS = timeStamp()
         logging.debug("Program started at %s" % tS)
-        # API functions
+        
     def get_ticker(pair):
         api = bittrex.bittrex(key, secret)
+        pair = str(pair)
         if pair == 'null':
             eprint('WARN: No pair specified, defaulting to BTC-ETH')
             pair == 'BTC-ETH'
@@ -290,21 +274,30 @@ def main(argv):
         if address == 'null':
             eprint('Specify an address with -A !')
             return False
-        try:
-            ret = api.withdraw(currency, amount, address)
-        except Exception as err:
-            logging.error(err)
-            eprint('Error withdrawing currency: ' + str(err))
-            return False
+        print('Please review the following information carefully!')
+        print('Currency: ' +str(currency))
+        print('Address: ' + str(address))
+        print('Amount: ' + str(amount))
+        do_it = input("Proceed? (YES/NO) :")
+        if do_it == 'YES':
+            try:
+                ret = api.withdraw(currency, amount, address)
+            except Exception as err:
+                logging.error(err)
+                eprint('Error withdrawing currency: ' + str(err))
+                return False
+            else:
+                ret = json.dumps(ret)
+                return(ret)
         else:
-            ret = json.dumps(ret)
-            return(ret)
-        
+            return(str('Withdrawal canceled'))
+            logging.info('Function: do_withdraw : Withdrawal canceled')
+            return False
+
     def wd_history(currency, count=10):
         api = bittrex.bittrex(key, secret)
         if currency == 'null':
-            eprint('No currency specified, defaulting to BTC')
-            currency = 'BTC'
+            currency = ''
         try:
             ret = api.getwithdrawalhistory(currency, count)
         except Exception as err:
@@ -314,9 +307,73 @@ def main(argv):
             ret = json.dumps(ret)
             return(ret)
         
-    
-    # program execution logic
+    def get_orders(pair):
+        api = bittrex.bittrex(key, secret)
+        if pair == 'null':
+            pair=''
+        try:
+            ret = api.getopenorders(pair)
+        except Exception as err:
+            logging.info(err)
+            eprint('Error getting open orders: ' + str(err))
+        else:
+            ret = json.dumps(ret)
+            print(ret)
+
+    def getcurrencies():
+        api =  bittrex.bittrex(key, secret)
+        try:
+            ret = api.getcurrencies()
+        except Exception as err:
+            logging.info(err)
+            eprint('Error getting currency data'+ str(err))
+        else:
+            ret = json.dumps(ret)
+            print(ret)
+
+    def deposithistory(currency,count=10):
+        api = bittrex.bittrex(key, secret)
+
+        if currency == 'null':
+            currency=''
         
+        try:
+            ret = api.getdeposithistory(currency,count)
+        except Exception as err:
+            logging.info(err)
+            eprint('Error getting deposit history' +str(err))
+        else:
+            ret = json.dumps(ret)
+            print(ret)
+
+    def orderHist(pair,count=10):
+        api = bittrex.bittrex(key, secret)
+        if pair == 'null' : pair=''
+        try:
+            ret = api.getorderhistory(pair,count)
+        except Exception as err:
+            logging.info(err)
+        else:
+            ret = json.dumps(pair)
+            print(ret)
+
+    def query_order(order_id):
+        api = bittrex.bittrex(key, secret)
+        if order_id == 'null':
+            eprint('Specify an order id (uuid) with -i')
+            return False
+        else:
+           try:
+              ret = api.getorder(order_id)
+           except Exception as err:
+              eprint('Error getting order history: ' + str(err))
+              return False
+           else:
+              ret = json.dumps(ret)
+              print(ret)
+    
+    """ Program Flow """
+
     if ticker:
             if debug:
                     print('Ticker call.')
@@ -363,14 +420,45 @@ def main(argv):
                     print('Withdrawal call')
             ret = do_withdraw(currency, amount, address)
             print(ret)
+    elif withdraw and not withdrawal_enabled:
+            eprint('Withdrawal disabled. Quitting.')
+            sys.exit(0)
             
     if withdrawal_history:
             if debug:
                     print('Withdrawal history call')
             ret = wd_history(currency, count)
             print(ret)
-            
-            
-# start up            
+    if orders:
+             if debug:
+                    print('Orders call')
+             ret = get_orders(pair)
+             print(ret)
+
+    if currencies:
+        if debug: print('Currencies call')
+        ret = getcurrencies()
+        print(ret)
+    
+    if deposit_history:
+        if debug: print('Deposit history call')
+        ret = deposithistory(currency, count)
+        print(ret)
+
+    if order_history:
+        if debug: print('Order history call')
+        ret = orderHist(pair)
+        print(ret)
+
+    if order_status_query:
+        if debug: print('Order status query call')
+        if not order_id:
+            eprint('Specify a uuid with -i')
+            sys.exit(1)
+        else:
+            ret = query_order(order_id)
+            print(ret)
+# start
+
 if __name__ == "__main__":
     main(sys.argv[1:])
